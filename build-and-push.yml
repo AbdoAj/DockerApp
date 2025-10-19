@@ -37,6 +37,9 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
+          # --- THIS IS THE LINE YOU NEED TO ADD ---
+          # Make sure 'DockerApp' is the name of the folder containing your Dockerfile.
+          file: ./API/Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
