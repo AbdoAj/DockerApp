@@ -29,5 +29,12 @@ namespace API.Controllers
             })
             .ToArray();
         }
+
+
+        [HttpGet("version")]
+        public string GetVersion()
+        {
+            return "API Version 1.3";
+        }
     }
 }
