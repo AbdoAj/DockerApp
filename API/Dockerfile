@@ -1,30 +1,30 @@
-# Runtime image
-FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS base
-WORKDIR /app
-EXPOSE 8080
-EXPOSE 8081
-
-# Build image
+# Stage 1: Build the application
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 
-# Copy project file first (for caching restore)
-COPY API.csproj ./
-RUN dotnet restore "./API.csproj"
+# Copy the solution file and project files first to leverage Docker layer caching.
+# This ensures that 'dotnet restore' is only re-run when project dependencies change.
+COPY ["DockerApp.sln", "."]
+COPY ["API/API.csproj", "API/"]
 
-# Copy all source files
+# Restore dependencies for the entire solution
+RUN dotnet restore "DockerApp.sln"
+
+# Copy the rest of the application's source code
 COPY . .
 
-# Build the project
-RUN dotnet build "./API.csproj" -c $BUILD_CONFIGURATION -o /app/build
+# Set the working directory to the API project folder to run the build and publish commands
+WORKDIR "/src/API"
+RUN dotnet build "API.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
-# Publish stage
+# Publish the application
 FROM build AS publish
-RUN dotnet publish "./API.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
+WORKDIR "/src/API" # Ensure we are in the correct directory for publish
+RUN dotnet publish "API.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
 
-# Final stage
-FROM base AS final
+# Stage 2: Create the final, lean production image
+FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
 ENTRYPOINT ["dotnet", "API.dll"]
